@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>ADAPT — Pilot Aptitude Simulator</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+<!-- ═══════════════════════════════ HEADER ═══════════════════════════════ -->
+<header id="main-header">
+  <div class="header-inner">
+    <div class="logo">
+      <span class="logo-icon">✈</span>
+      <div class="logo-text">
+        <span class="logo-adapt">ADAPT</span>
+        <span class="logo-sub">Pilot Aptitude Simulator</span>
+      </div>
+    </div>
+    <div class="header-controls">
+      <div class="status-bar">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-label">READY</span>
+      </div>
+      <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+        <span class="theme-icon">☀</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════ NAV TABS ═════════════════════════════ -->
+<nav id="main-nav">
+  <div class="nav-inner">
+    <button class="tab-btn active" data-tab="dashboard">
+      <span class="tab-icon">📊</span><span class="tab-label">Dashboard</span>
+    </button>
+    <button class="tab-btn" data-tab="multitask">
+      <span class="tab-icon">🎯</span><span class="tab-label">Multitask</span>
+    </button>
+    <button class="tab-btn" data-tab="reaction">
+      <span class="tab-icon">⚡</span><span class="tab-label">Reaction</span>
+    </button>
+    <button class="tab-btn" data-tab="monitoring">
+      <span class="tab-icon">🛩</span><span class="tab-label">Monitoring</span>
+    </button>
+    <button class="tab-btn" data-tab="spatial">
+      <span class="tab-icon">🧭</span><span class="tab-label">Spatial</span>
+    </button>
+    <button class="tab-btn" data-tab="memory">
+      <span class="tab-icon">🧠</span><span class="tab-label">Memory</span>
+    </button>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════ MAIN CONTENT ═════════════════════════ -->
+<main id="app-main">
+
+  <!-- ─────────────── DASHBOARD TAB ─────────────── -->
+  <section class="tab-panel active" id="tab-dashboard">
+    <div class="panel-header">
+      <h2>Performance Dashboard</h2>
+      <button class="btn-secondary btn-sm" id="clear-scores-btn">Clear All Scores</button>
+    </div>
+
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-card" id="stat-multitask">
+        <div class="stat-icon">🎯</div>
+        <div class="stat-body">
+          <div class="stat-title">Multitask Score</div>
+          <div class="stat-value" id="dash-multitask">—</div>
+          <div class="stat-meta" id="dash-multitask-meta">No data</div>
+        </div>
+      </div>
+      <div class="stat-card" id="stat-reaction">
+        <div class="stat-icon">⚡</div>
+        <div class="stat-body">
+          <div class="stat-title">Best Reaction</div>
+          <div class="stat-value" id="dash-reaction">—</div>
+          <div class="stat-meta" id="dash-reaction-meta">No data</div>
+        </div>
+      </div>
+      <div class="stat-card" id="stat-monitoring">
+        <div class="stat-icon">🛩</div>
+        <div class="stat-body">
+          <div class="stat-title">Monitoring Accuracy</div>
+          <div class="stat-value" id="dash-monitoring">—</div>
+          <div class="stat-meta" id="dash-monitoring-meta">No data</div>
+        </div>
+      </div>
+      <div class="stat-card" id="stat-spatial">
+        <div class="stat-icon">🧭</div>
+        <div class="stat-body">
+          <div class="stat-title">Spatial Score</div>
+          <div class="stat-value" id="dash-spatial">—</div>
+          <div class="stat-meta" id="dash-spatial-meta">No data</div>
+        </div>
+      </div>
+      <div class="stat-card" id="stat-memory">
+        <div class="stat-icon">🧠</div>
+        <div class="stat-body">
+          <div class="stat-title">Memory Level</div>
+          <div class="stat-value" id="dash-memory">—</div>
+          <div class="stat-meta" id="dash-memory-meta">No data</div>
+        </div>
+      </div>
+      <div class="stat-card overall" id="stat-overall">
+        <div class="stat-icon">🏆</div>
+        <div class="stat-body">
+          <div class="stat-title">Overall Rating</div>
+          <div class="stat-value" id="dash-overall">—</div>
+          <div class="stat-meta" id="dash-overall-meta">Complete all modules</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-section">
+      <h3>Score History</h3>
+      <canvas id="history-chart" height="240"></canvas>
+    </div>
+
+    <div class="rating-guide">
+      <h3>Performance Rating Guide</h3>
+      <div class="rating-bars">
+        <div class="rating-item"><span class="rating-label">Exceptional</span><div class="rating-bar r-exceptional"><span>90–100%</span></div></div>
+        <div class="rating-item"><span class="rating-label">Above Average</span><div class="rating-bar r-above"><span>75–89%</span></div></div>
+        <div class="rating-item"><span class="rating-label">Average</span><div class="rating-bar r-avg"><span>55–74%</span></div></div>
+        <div class="rating-item"><span class="rating-label">Below Average</span><div class="rating-bar r-below"><span>&lt;55%</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────── MULTITASK TAB ─────────────── -->
+  <section class="tab-panel" id="tab-multitask">
+    <div class="panel-header">
+      <h2>Multitasking Test</h2>
+      <div class="module-timer-wrap">
+        <span class="module-timer" id="mt-timer">02:00</span>
+      </div>
+    </div>
+    <div class="module-desc" id="mt-intro">
+      <div class="intro-card">
+        <h3>Triple-Task Challenge</h3>
+        <p>Perform <strong>three simultaneous tasks</strong> to simulate real cockpit workload:</p>
+        <ul>
+          <li>🎯 <strong>Tracking:</strong> Keep the crosshair on the moving dot</li>
+          <li>➕ <strong>Math:</strong> Answer arithmetic questions quickly</li>
+          <li>🔔 <strong>Alerts:</strong> Click the button when a signal flashes</li>
+        </ul>
+        <p class="tip">All three tasks run at the same time. Your score depends on tracking accuracy, math accuracy, and alert reaction speed.</p>
+        <button class="btn-primary btn-lg" id="mt-start-btn">Start Test (2 min)</button>
+      </div>
+    </div>
+    <div class="mt-arena hidden" id="mt-arena">
+      <div class="mt-top-bar">
+        <div class="mt-score-block">
+          <span class="score-label">TRACKING</span>
+          <span class="score-val" id="mt-track-score">100%</span>
+        </div>
+        <div class="mt-score-block">
+          <span class="score-label">MATH</span>
+          <span class="score-val" id="mt-math-score">0/0</span>
+        </div>
+        <div class="mt-score-block">
+          <span class="score-label">ALERTS</span>
+          <span class="score-val" id="mt-alert-score">0/0</span>
+        </div>
+      </div>
+
+      <!-- Tracking canvas -->
+      <div class="mt-tracking-wrap">
+        <canvas id="mt-canvas" width="400" height="260"></canvas>
+        <div class="tracking-hint">Move cursor/finger to keep crosshair on dot</div>
+      </div>
+
+      <!-- Math task -->
+      <div class="mt-math-wrap" id="mt-math-wrap">
+        <div class="math-question" id="mt-math-q">—</div>
+        <div class="math-options" id="mt-math-opts"></div>
+      </div>
+
+      <!-- Alert signal -->
+      <div class="mt-alert-wrap">
+        <div class="alert-signal" id="mt-alert-signal">
+          <span id="mt-alert-text">STANDBY</span>
+        </div>
+        <button class="btn-alert" id="mt-alert-btn" disabled>RESPOND!</button>
+      </div>
+    </div>
+    <div class="module-result hidden" id="mt-result"></div>
+  </section>
+
+  <!-- ─────────────── REACTION TAB ─────────────── -->
+  <section class="tab-panel" id="tab-reaction">
+    <div class="panel-header">
+      <h2>Reaction Time Test</h2>
+      <div class="module-timer-wrap">
+        <span class="module-timer" id="rt-timer">01:30</span>
+      </div>
+    </div>
+    <div class="module-desc" id="rt-intro">
+      <div class="intro-card">
+        <h3>Rapid Reaction Test</h3>
+        <p>Shapes and colors will appear on screen. <strong>React as fast as possible</strong>:</p>
+        <ul>
+          <li>🟢 <strong>GREEN signal</strong> → Tap/click <strong>anywhere</strong></li>
+          <li>🔴 <strong>RED signal</strong> → <strong>Do NOT react</strong> (penalty!)</li>
+          <li>🟡 <strong>YELLOW</strong> → Press <strong>correct key shown</strong></li>
+        </ul>
+        <p class="tip">Reaction time is measured in milliseconds. Your best and average times are tracked.</p>
+        <button class="btn-primary btn-lg" id="rt-start-btn">Start Test (90 sec)</button>
+      </div>
+    </div>
+    <div class="rt-arena hidden" id="rt-arena">
+      <div class="rt-stats-bar">
+        <div class="rt-stat"><span>Attempts</span><strong id="rt-attempts">0</strong></div>
+        <div class="rt-stat"><span>Correct</span><strong id="rt-correct">0</strong></div>
+        <div class="rt-stat"><span>Avg RT</span><strong id="rt-avg">—</strong></div>
+        <div class="rt-stat"><span>Best RT</span><strong id="rt-best">—</strong></div>
+      </div>
+      <div class="rt-stage" id="rt-stage">
+        <div class="rt-waiting" id="rt-waiting">
+          <div class="rt-pulse"></div>
+          <p>Waiting for signal…</p>
+        </div>
+        <div class="rt-signal hidden" id="rt-signal">
+          <div class="rt-shape" id="rt-shape"></div>
+          <div class="rt-instruction" id="rt-instruction"></div>
+        </div>
+        <div class="rt-feedback hidden" id="rt-feedback"></div>
+      </div>
+    </div>
+    <div class="module-result hidden" id="rt-result"></div>
+  </section>
+
+  <!-- ─────────────── MONITORING TAB ─────────────── -->
+  <section class="tab-panel" id="tab-monitoring">
+    <div class="panel-header">
+      <h2>Instrument Monitoring</h2>
+      <div class="module-timer-wrap">
+        <span class="module-timer" id="im-timer">02:00</span>
+      </div>
+    </div>
+    <div class="module-desc" id="im-intro">
+      <div class="intro-card">
+        <h3>Cockpit Instrument Scan</h3>
+        <p>Monitor cockpit gauges for <strong>anomalies</strong>. When an instrument goes out of range, <strong>click it immediately</strong>.</p>
+        <ul>
+          <li>🔵 <strong>Altitude:</strong> Normal 2000–8000 ft</li>
+          <li>🟠 <strong>Airspeed:</strong> Normal 120–280 kts</li>
+          <li>🟣 <strong>Heading:</strong> No warning (directional)</li>
+          <li>🔴 <strong>Warning light</strong> → click to acknowledge</li>
+        </ul>
+        <p class="tip">Score = anomalies caught × reaction speed bonus</p>
+        <button class="btn-primary btn-lg" id="im-start-btn">Start Test (2 min)</button>
+      </div>
+    </div>
+    <div class="im-arena hidden" id="im-arena">
+      <div class="im-stats-bar">
+        <div class="im-stat"><span>Anomalies</span><strong id="im-total">0</strong></div>
+        <div class="im-stat"><span>Caught</span><strong id="im-caught">0</strong></div>
+        <div class="im-stat"><span>Missed</span><strong id="im-missed">0</strong></div>
+        <div class="im-stat"><span>Accuracy</span><strong id="im-accuracy">—</strong></div>
+      </div>
+      <div class="cockpit-panel" id="cockpit-panel">
+        <!-- Altitude Gauge -->
+        <div class="gauge-wrap" id="gauge-altitude" data-instrument="altitude">
+          <div class="gauge-label">ALTITUDE</div>
+          <div class="gauge-dial">
+            <canvas id="canvas-altitude" width="160" height="160"></canvas>
+          </div>
+          <div class="gauge-value" id="val-altitude">5000 ft</div>
+          <div class="gauge-unit">feet</div>
+          <div class="anomaly-flash hidden" id="flash-altitude">⚠ ANOMALY</div>
+        </div>
+        <!-- Airspeed Gauge -->
+        <div class="gauge-wrap" id="gauge-airspeed" data-instrument="airspeed">
+          <div class="gauge-label">AIRSPEED</div>
+          <div class="gauge-dial">
+            <canvas id="canvas-airspeed" width="160" height="160"></canvas>
+          </div>
+          <div class="gauge-value" id="val-airspeed">200 kts</div>
+          <div class="gauge-unit">knots</div>
+          <div class="anomaly-flash hidden" id="flash-airspeed">⚠ ANOMALY</div>
+        </div>
+        <!-- Heading Indicator -->
+        <div class="gauge-wrap" id="gauge-heading" data-instrument="heading">
+          <div class="gauge-label">HEADING</div>
+          <div class="gauge-dial">
+            <canvas id="canvas-heading" width="160" height="160"></canvas>
+          </div>
+          <div class="gauge-value" id="val-heading">090°</div>
+          <div class="gauge-unit">degrees</div>
+          <div class="anomaly-flash hidden" id="flash-heading">⚠ ANOMALY</div>
+        </div>
+        <!-- Vertical Speed -->
+        <div class="gauge-wrap" id="gauge-vspeed" data-instrument="vspeed">
+          <div class="gauge-label">VERT SPEED</div>
+          <div class="gauge-dial">
+            <canvas id="canvas-vspeed" width="160" height="160"></canvas>
+          </div>
+          <div class="gauge-value" id="val-vspeed">0 fpm</div>
+          <div class="gauge-unit">ft/min</div>
+          <div class="anomaly-flash hidden" id="flash-vspeed">⚠ ANOMALY</div>
+        </div>
+        <!-- Warning Panel -->
+        <div class="warning-panel" id="warning-panel">
+          <div class="warning-title">WARNING PANEL</div>
+          <div class="warning-lights-grid" id="warning-lights"></div>
+        </div>
+      </div>
+    </div>
+    <div class="module-result hidden" id="im-result"></div>
+  </section>
+
+  <!-- ─────────────── SPATIAL TAB ─────────────── -->
+  <section class="tab-panel" id="tab-spatial">
+    <div class="panel-header">
+      <h2>Spatial Orientation Test</h2>
+      <div class="module-timer-wrap">
+        <span class="module-timer" id="sp-timer">01:30</span>
+      </div>
+    </div>
+    <div class="module-desc" id="sp-intro">
+      <div class="intro-card">
+        <h3>Aircraft Orientation</h3>
+        <p>An aircraft silhouette will show a specific bank and pitch. <strong>Select the correct orientation description</strong>.</p>
+        <ul>
+          <li>🔄 <strong>Bank:</strong> Left/Right tilt of wings</li>
+          <li>⬆ <strong>Pitch:</strong> Nose up/down attitude</li>
+          <li>✅ Select the matching answer from 4 choices</li>
+        </ul>
+        <p class="tip">Faster correct answers score more. Incorrect answers deduct points.</p>
+        <button class="btn-primary btn-lg" id="sp-start-btn">Start Test (90 sec)</button>
+      </div>
+    </div>
+    <div class="sp-arena hidden" id="sp-arena">
+      <div class="sp-stats-bar">
+        <div class="sp-stat"><span>Question</span><strong id="sp-qnum">1</strong></div>
+        <div class="sp-stat"><span>Score</span><strong id="sp-score">0</strong></div>
+        <div class="sp-stat"><span>Correct</span><strong id="sp-correct">0</strong></div>
+        <div class="sp-stat"><span>Streak</span><strong id="sp-streak">0</strong></div>
+      </div>
+      <div class="sp-stage">
+        <div class="sp-aircraft-wrap">
+          <canvas id="sp-canvas" width="300" height="300"></canvas>
+          <div class="sp-question-text" id="sp-question-text">What is the aircraft's orientation?</div>
+        </div>
+        <div class="sp-options" id="sp-options"></div>
+      </div>
+      <div class="sp-feedback" id="sp-feedback"></div>
+    </div>
+    <div class="module-result hidden" id="sp-result"></div>
+  </section>
+
+  <!-- ─────────────── MEMORY TAB ─────────────── -->
+  <section class="tab-panel" id="tab-memory">
+    <div class="panel-header">
+      <h2>Memory Sequence Test</h2>
+      <div class="module-timer-wrap">
+        <span class="module-timer" id="mem-timer">02:00</span>
+      </div>
+    </div>
+    <div class="module-desc" id="mem-intro">
+      <div class="intro-card">
+        <h3>Sequence Recall</h3>
+        <p>A sequence of numbers/symbols will flash on screen. <strong>Remember the order and reproduce it</strong>.</p>
+        <ul>
+          <li>👁 Watch the sequence carefully</li>
+          <li>✍ Enter the sequence from memory</li>
+          <li>📈 Difficulty increases with each correct answer</li>
+        </ul>
+        <p class="tip">Start at length 3, max length 9. Sequences get faster and longer.</p>
+        <button class="btn-primary btn-lg" id="mem-start-btn">Start Test (2 min)</button>
+      </div>
+    </div>
+    <div class="mem-arena hidden" id="mem-arena">
+      <div class="mem-stats-bar">
+        <div class="mem-stat"><span>Level</span><strong id="mem-level">1</strong></div>
+        <div class="mem-stat"><span>Length</span><strong id="mem-length">3</strong></div>
+        <div class="mem-stat"><span>Score</span><strong id="mem-score">0</strong></div>
+        <div class="mem-stat"><span>Lives</span><strong id="mem-lives">❤❤❤</strong></div>
+      </div>
+      <div class="mem-stage" id="mem-stage">
+        <div class="mem-display" id="mem-display">
+          <div class="mem-sequence-row" id="mem-seq-display"></div>
+        </div>
+        <div class="mem-input-area" id="mem-input-area">
+          <div class="mem-phase-label" id="mem-phase-label">Memorize the sequence…</div>
+          <div class="mem-input-grid" id="mem-input-grid"></div>
+          <div class="mem-entered" id="mem-entered"></div>
+          <button class="btn-secondary" id="mem-clear-btn" style="display:none">Clear</button>
+          <button class="btn-primary" id="mem-submit-btn" style="display:none">Submit</button>
+        </div>
+      </div>
+      <div class="mem-feedback" id="mem-feedback"></div>
+    </div>
+    <div class="module-result hidden" id="mem-result"></div>
+  </section>
+
+</main>
+
+<!-- ═══════════════════ GLOBAL OVERLAY ═══════════════════ -->
+<div class="overlay hidden" id="overlay">
+  <div class="overlay-box" id="overlay-box">
+    <div class="overlay-icon" id="overlay-icon">🏁</div>
+    <h2 id="overlay-title">Test Complete</h2>
+    <p id="overlay-body"></p>
+    <div class="overlay-scores" id="overlay-scores"></div>
+    <button class="btn-primary" id="overlay-close">Back to Dashboard</button>
+  </div>
+</div>
+
+<!-- ═══════════════════ SCRIPTS ═══════════════════ -->
+<script src="js/storage.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/multitask.js"></script>
+<script src="js/reaction.js"></script>
+<script src="js/monitoring.js"></script>
+<script src="js/spatial.js"></script>
+<script src="js/memory.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
