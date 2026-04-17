@@ -304,3 +304,5 @@ const SimulatorController = (() => {
   console.log('[SimulatorController] initialized');
   return { init };
 })();
+
+window.SimulatorController = SimulatorController;
