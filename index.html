@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>ADAPT — Pilot Aptitude Simulator v2</title>
+  <title>ADAPT — Pilot Aptitude Simulator</title>
   <link rel="stylesheet" href="css/style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet" />
@@ -17,10 +17,15 @@
       <span class="logo-icon">✈</span>
       <div class="logo-text">
         <span class="logo-adapt">ADAPT</span>
-        <span class="logo-sub">Pilot Aptitude Simulator v2</span>
+        <span class="logo-sub">Pilot Aptitude Simulator</span>
       </div>
     </div>
     <div class="header-controls">
+      <!-- Global HUD timer (visible during simulator) -->
+      <div class="hud-timer-wrap hidden" id="hud-timer-wrap">
+        <span class="hud-timer-label">SESSION</span>
+        <span class="hud-timer" id="hud-global-timer">15:00</span>
+      </div>
       <div class="status-bar">
         <span class="status-dot" id="status-dot"></span>
         <span id="status-label">READY</span>
@@ -33,14 +38,6 @@
 </header>
 
 <!-- ═══════════════════════════════ NAV TABS ═════════════════════════════ -->
-  <div id="status">
-  <span id="status-dot" style="display:inline-block;width:10px;height:10px;background:gray;border-radius:50%;"></span>
-  <span id="status-label">READY</span>
-</div>
-
-<div id="timer">10:00</div>
-
-<div id="simulator"></div>
 <nav id="main-nav">
   <div class="nav-inner">
     <button class="tab-btn active" data-tab="dashboard">
@@ -64,14 +61,13 @@
     <button class="tab-btn" data-tab="memory">
       <span class="tab-icon">🧠</span><span class="tab-label">Memory</span>
     </button>
-    <button id="sim-start-btn">Start Simulator</button>
   </div>
 </nav>
 
 <!-- ═══════════════════════════════ MAIN CONTENT ═════════════════════════ -->
 <main id="app-main">
 
-  <!-- ═══════════════════ DASHBOARD ═══════════════════ -->
+  <!-- ─────────────── DASHBOARD TAB ─────────────── -->
   <section class="tab-panel active" id="tab-dashboard">
     <div class="panel-header">
       <h2>Performance Dashboard</h2>
@@ -79,14 +75,6 @@
     </div>
 
     <div class="stats-grid" id="stats-grid">
-      <div class="stat-card sim-card" id="stat-simulator">
-        <div class="stat-icon">🚀</div>
-        <div class="stat-body">
-          <div class="stat-title">Simulator Score</div>
-          <div class="stat-value" id="dash-simulator">—</div>
-          <div class="stat-meta" id="dash-simulator-meta">No simulator runs</div>
-        </div>
-      </div>
       <div class="stat-card" id="stat-multitask">
         <div class="stat-icon">🎯</div>
         <div class="stat-body">
@@ -127,6 +115,14 @@
           <div class="stat-meta" id="dash-memory-meta">No data</div>
         </div>
       </div>
+      <div class="stat-card" id="stat-simulator">
+        <div class="stat-icon">🚀</div>
+        <div class="stat-body">
+          <div class="stat-title">Best Simulator</div>
+          <div class="stat-value" id="dash-simulator">—</div>
+          <div class="stat-meta" id="dash-simulator-meta">No simulator runs</div>
+        </div>
+      </div>
       <div class="stat-card overall" id="stat-overall">
         <div class="stat-icon">🏆</div>
         <div class="stat-body">
@@ -137,225 +133,263 @@
       </div>
     </div>
 
+    <!-- Score History Chart -->
     <div class="chart-section">
       <h3>Score History</h3>
       <canvas id="history-chart" height="240"></canvas>
     </div>
 
-    <div class="chart-section">
+    <!-- Reaction Trend -->
+    <div class="chart-section" id="reaction-trend-section">
       <h3>Reaction Time Trend</h3>
       <canvas id="reaction-trend-chart" height="200"></canvas>
     </div>
 
-    <div class="chart-section">
+    <!-- Weak Area Detection -->
+    <div class="weak-area-section" id="weak-area-section">
+      <h3>Skill Analysis</h3>
+      <div class="skill-bars" id="skill-bars"></div>
+    </div>
+
+    <!-- Session History -->
+    <div class="session-history-section" id="session-history-section">
       <h3>Simulator Session History</h3>
-      <div id="sim-history-list" class="sim-history-list"></div>
+      <div class="session-list" id="session-list">
+        <div class="no-sessions">No simulator sessions yet. Start a Full ADAPT Test!</div>
+      </div>
     </div>
 
     <div class="rating-guide">
       <h3>Performance Rating Guide</h3>
       <div class="rating-bars">
         <div class="rating-item"><span class="rating-label">Exceptional</span><div class="rating-bar r-exceptional"><span>90–100%</span></div></div>
-        <div class="rating-item"><span class="rating-label">Above Average</span><div class="rating-bar r-above"><span>80–89%</span></div></div>
-        <div class="rating-item"><span class="rating-label">Average</span><div class="rating-bar r-avg"><span>65–79%</span></div></div>
-        <div class="rating-item"><span class="rating-label">Below Average</span><div class="rating-bar r-below"><span>&lt;65%</span></div></div>
+        <div class="rating-item"><span class="rating-label">Above Average</span><div class="rating-bar r-above"><span>75–89%</span></div></div>
+        <div class="rating-item"><span class="rating-label">Average</span><div class="rating-bar r-avg"><span>55–74%</span></div></div>
+        <div class="rating-item"><span class="rating-label">Below Average</span><div class="rating-bar r-below"><span>&lt;55%</span></div></div>
       </div>
     </div>
   </section>
 
-  <!-- ═══════════════════ FULL SIMULATOR TAB ═══════════════════ -->
+  <!-- ─────────────── SIMULATOR TAB ─────────────── -->
   <section class="tab-panel" id="tab-simulator">
     <div class="panel-header">
       <h2>Full ADAPT Simulator</h2>
       <div class="module-timer-wrap">
-        <span class="module-timer" id="sim-timer">10:00</span>
+        <span class="module-timer" id="sim-timer">15:00</span>
       </div>
     </div>
 
-    <!-- INTRO -->
+    <!-- Intro screen -->
     <div id="sim-intro">
       <div class="sim-intro-card">
-        <div class="sim-intro-badge">⚠ REAL TEST MODE</div>
-        <h3>Full ADAPT Test — All Tasks Simultaneously</h3>
-        <p>This mode replicates the actual ADAPT psychometric test used in airline cadet selection. <strong>All four tasks run at the same time with no pause allowed.</strong></p>
+        <div class="sim-intro-badge">🚀 FULL TEST MODE</div>
+        <h3>Full ADAPT Test — 15 Minutes</h3>
+        <p>This is a <strong>real airline selection-style aptitude test</strong>. All tasks run simultaneously under increasing pressure. No pause allowed.</p>
 
         <div class="sim-task-grid">
           <div class="sim-task-item">
-            <div class="sim-task-icon">🎯</div>
-            <div class="sim-task-name">Target Tracking</div>
-            <div class="sim-task-desc">Keep crosshair on moving dot</div>
+            <span class="sim-task-icon">🎯</span>
+            <div><strong>Target Tracking</strong><br><small>Keep crosshair on moving dot</small></div>
           </div>
           <div class="sim-task-item">
-            <div class="sim-task-icon">➕</div>
-            <div class="sim-task-name">Mental Arithmetic</div>
-            <div class="sim-task-desc">Solve math questions under pressure</div>
+            <span class="sim-task-icon">➕</span>
+            <div><strong>Math Problems</strong><br><small>Solve arithmetic under pressure</small></div>
           </div>
           <div class="sim-task-item">
-            <div class="sim-task-icon">⚡</div>
-            <div class="sim-task-name">Reaction Signals</div>
-            <div class="sim-task-desc">Respond correctly to colour signals</div>
+            <span class="sim-task-icon">🔔</span>
+            <div><strong>Alert Response</strong><br><small>React to signals instantly</small></div>
           </div>
           <div class="sim-task-item">
-            <div class="sim-task-icon">🛩</div>
-            <div class="sim-task-name">Instrument Monitoring</div>
-            <div class="sim-task-desc">Detect cockpit gauge anomalies</div>
+            <span class="sim-task-icon">🛩</span>
+            <div><strong>Instrument Watch</strong><br><small>Spot and click anomalies</small></div>
           </div>
         </div>
 
-        <div class="sim-features">
-          <div class="sim-feature">📈 Adaptive difficulty — increases as you improve</div>
-          <div class="sim-feature">🔊 Audio stress simulation included</div>
-          <div class="sim-feature">📊 Full breakdown & skill analysis after</div>
-          <div class="sim-feature">💾 Results saved to history automatically</div>
+        <div class="sim-rules">
+          <div class="sim-rule">⏱ 15-minute continuous test</div>
+          <div class="sim-rule">⚠ No pause allowed once started</div>
+          <div class="sim-rule">📈 Difficulty increases over time</div>
+          <div class="sim-rule">🔊 Audio alerts — use sound if possible</div>
+          <div class="sim-rule">🏆 Final score with full skill breakdown</div>
         </div>
 
-        <div class="sim-duration-selector">
-          <div class="sim-dur-label">SELECT SESSION LENGTH:</div>
-          <div class="sim-duration-btns">
-            <button class="sim-duration-btn selected" data-duration="600">10 MIN</button>
-            <button class="sim-duration-btn" data-duration="720">12 MIN</button>
-            <button class="sim-duration-btn" data-duration="900">15 MIN</button>
-          </div>
-        </div>
-
-        <div class="sim-warning-box">
-          ⚠ Once started, the test cannot be paused. Stay focused and try to maintain performance across all tasks simultaneously.
-        </div>
-
-        <button class="btn-primary btn-lg btn-sim-start" id="sim-start-btn">🚀 Start Full ADAPT Test</button>
+        <button class="btn-primary btn-lg" id="sim-start-btn">▶ Start Full ADAPT Test</button>
+        <div class="sim-warning">Ensure you have 15 uninterrupted minutes. The test cannot be paused.</div>
       </div>
     </div>
 
-    <!-- ARENA -->
-    <div id="sim-arena" class="hidden">
+    <!-- Live Simulator Arena -->
+    <div class="sim-arena hidden" id="sim-arena">
 
       <!-- HUD Bar -->
-      <div class="sim-hud">
-        <div class="sim-hud-item">
-          <div class="sim-hud-label">TRACKING</div>
-          <div class="sim-hud-val" id="sim-hud-track">—</div>
+      <div class="sim-hud-bar" id="sim-hud-bar">
+        <div class="hud-block">
+          <span class="hud-label">TIME</span>
+          <span class="hud-val hud-time" id="sim-hud-time">15:00</span>
         </div>
-        <div class="sim-hud-item">
-          <div class="sim-hud-label">MATH</div>
-          <div class="sim-hud-val" id="sim-hud-math">—</div>
+        <div class="hud-block">
+          <span class="hud-label">PHASE</span>
+          <span class="hud-val hud-phase" id="sim-hud-phase">INIT</span>
         </div>
-        <div class="sim-hud-item">
-          <div class="sim-hud-label">REACTION</div>
-          <div class="sim-hud-val" id="sim-hud-react">—</div>
+        <div class="hud-block">
+          <span class="hud-label">DIFFICULTY</span>
+          <span class="hud-val hud-diff" id="sim-hud-diff">1.0×</span>
         </div>
-        <div class="sim-hud-item">
-          <div class="sim-hud-label">MONITORING</div>
-          <div class="sim-hud-val" id="sim-hud-mon">—</div>
+        <div class="hud-block">
+          <span class="hud-label">LIVE SCORE</span>
+          <span class="hud-val hud-score" id="sim-hud-score">0</span>
         </div>
-        <div class="sim-hud-item hud-composite">
-          <div class="sim-hud-label">COMPOSITE</div>
-          <div class="sim-hud-val" id="sim-hud-composite">—</div>
-        </div>
-        <div class="sim-hud-item">
-          <div class="sim-hud-label">STRESS</div>
-          <div class="sim-hud-val" id="sim-hud-stress">LOW</div>
-        </div>
-        <div class="sim-hud-abort">
-          <button class="btn-secondary btn-sm" id="sim-back-btn">✕ ABORT</button>
+        <div class="hud-block">
+          <span class="hud-label">STRESS</span>
+          <div class="stress-bar-wrap">
+            <div class="stress-bar-fill" id="sim-stress-fill" style="width:0%"></div>
+          </div>
         </div>
       </div>
 
-      <!-- Task layout: 2-column on desktop, stacked on mobile -->
-      <div class="sim-arena-grid">
+      <!-- 4-panel grid -->
+      <div class="sim-panels" id="sim-panels">
 
-        <!-- LEFT COLUMN: Tracking + Math -->
-        <div class="sim-col-left">
-
-          <!-- Tracking -->
-          <div class="sim-panel sim-panel-tracking">
-            <div class="sim-panel-title">🎯 TARGET TRACKING</div>
-            <canvas id="sim-track-canvas" width="500" height="280" style="touch-action:none;cursor:crosshair;display:block;max-width:100%;"></canvas>
-            <div class="sim-panel-hint">Move cursor/finger to keep crosshair on the red dot</div>
+        <!-- Panel 1: Tracking -->
+        <div class="sim-panel" id="sim-panel-tracking">
+          <div class="sim-panel-header">
+            <span class="sim-panel-title">TARGET TRACKING</span>
+            <span class="sim-panel-score" id="sim-track-score">100%</span>
           </div>
+          <canvas id="sim-track-canvas" width="400" height="240"></canvas>
+          <div class="sim-panel-hint">Move cursor/finger to keep crosshair on target</div>
+        </div>
 
-          <!-- Math -->
-          <div class="sim-panel sim-panel-math">
-            <div class="sim-panel-title">➕ MENTAL ARITHMETIC</div>
-            <div class="math-question" id="sim-math-q" style="font-size:32px">—</div>
-            <div class="math-options" id="sim-math-opts" style="margin-top:12px"></div>
+        <!-- Panel 2: Math -->
+        <div class="sim-panel" id="sim-panel-math">
+          <div class="sim-panel-header">
+            <span class="sim-panel-title">ARITHMETIC</span>
+            <span class="sim-panel-score" id="sim-math-score">0/0</span>
+          </div>
+          <div class="sim-math-q" id="sim-math-q">—</div>
+          <div class="sim-math-opts" id="sim-math-opts"></div>
+          <div class="sim-math-timer-bar"><div class="sim-math-timer-fill" id="sim-math-timer-fill"></div></div>
+        </div>
+
+        <!-- Panel 3: Alert Response -->
+        <div class="sim-panel" id="sim-panel-alert">
+          <div class="sim-panel-header">
+            <span class="sim-panel-title">ALERT RESPONSE</span>
+            <span class="sim-panel-score" id="sim-alert-score">0/0</span>
+          </div>
+          <div class="sim-alert-display" id="sim-alert-display">
+            <div class="sim-alert-signal" id="sim-alert-signal">
+              <span class="sim-alert-text" id="sim-alert-text">STANDBY</span>
+            </div>
+            <button class="btn-alert-sim" id="sim-alert-btn" disabled>RESPOND!</button>
+          </div>
+          <div class="sim-alert-rt" id="sim-alert-rt">Last RT: —</div>
+        </div>
+
+        <!-- Panel 4: Instrument Monitoring -->
+        <div class="sim-panel" id="sim-panel-instruments">
+          <div class="sim-panel-header">
+            <span class="sim-panel-title">INSTRUMENTS</span>
+            <span class="sim-panel-score" id="sim-inst-score">0/0</span>
+          </div>
+          <div class="sim-instruments" id="sim-instruments">
+            <div class="sim-gauge" id="sim-g-altitude" data-inst="altitude">
+              <div class="sim-gauge-label">ALT</div>
+              <canvas id="sim-c-altitude" width="100" height="100"></canvas>
+              <div class="sim-gauge-val" id="sim-v-altitude">5000</div>
+              <div class="sim-gauge-alert hidden" id="sim-a-altitude">⚠</div>
+            </div>
+            <div class="sim-gauge" id="sim-g-airspeed" data-inst="airspeed">
+              <div class="sim-gauge-label">SPD</div>
+              <canvas id="sim-c-airspeed" width="100" height="100"></canvas>
+              <div class="sim-gauge-val" id="sim-v-airspeed">200</div>
+              <div class="sim-gauge-alert hidden" id="sim-a-airspeed">⚠</div>
+            </div>
+            <div class="sim-gauge" id="sim-g-vspeed" data-inst="vspeed">
+              <div class="sim-gauge-label">V/S</div>
+              <canvas id="sim-c-vspeed" width="100" height="100"></canvas>
+              <div class="sim-gauge-val" id="sim-v-vspeed">0</div>
+              <div class="sim-gauge-alert hidden" id="sim-a-vspeed">⚠</div>
+            </div>
+            <div class="sim-gauge" id="sim-g-fuel" data-inst="fuel">
+              <div class="sim-gauge-label">FUEL</div>
+              <canvas id="sim-c-fuel" width="100" height="100"></canvas>
+              <div class="sim-gauge-val" id="sim-v-fuel">75%</div>
+              <div class="sim-gauge-alert hidden" id="sim-a-fuel">⚠</div>
+            </div>
+          </div>
+          <div class="sim-warn-row" id="sim-warn-row">
+            <div class="sim-warn-light" id="swl-stall" data-swl="stall">STALL</div>
+            <div class="sim-warn-light" id="swl-fire" data-swl="fire">FIRE</div>
+            <div class="sim-warn-light" id="swl-cabin" data-swl="cabin">CABIN</div>
+            <div class="sim-warn-light" id="swl-oil" data-swl="oil">OIL</div>
           </div>
         </div>
 
-        <!-- RIGHT COLUMN: Reaction + Instruments -->
-        <div class="sim-col-right">
+      </div><!-- end sim-panels -->
 
-          <!-- Reaction signals -->
-          <div class="sim-panel sim-panel-reaction">
-            <div class="sim-panel-title">⚡ REACTION SIGNALS</div>
-            <div class="sim-react-stage" id="sim-react-stage">
-              <div class="sim-react-signal" id="sim-react-signal">STANDBY</div>
-              <div class="sim-react-hint">Click/tap here · Double-click for 🔵 · Keys for 🟡</div>
-              <div class="sim-react-feedback" id="sim-react-feedback"></div>
-            </div>
-          </div>
+      <!-- Distraction overlay (stress system) -->
+      <div class="sim-distraction hidden" id="sim-distraction">
+        <span id="sim-distraction-text"></span>
+      </div>
 
-          <!-- Instruments -->
-          <div class="sim-panel sim-panel-instruments">
-            <div class="sim-panel-title">🛩 INSTRUMENT MONITORING — Click anomalous gauge!</div>
-            <div class="sim-instruments-row">
+    </div><!-- end sim-arena -->
 
-              <div class="sim-gauge-wrap" id="sim-wrap-altitude" data-name="altitude">
-                <div class="gauge-label">ALTITUDE</div>
-                <canvas id="sim-canvas-altitude" width="120" height="120"></canvas>
-                <div class="gauge-value" id="sim-val-altitude">5000 ft</div>
-                <div class="anomaly-flash hidden" id="sim-flash-altitude">⚠ ANOMALY</div>
-              </div>
+    <!-- Results screen -->
+    <div class="sim-results hidden" id="sim-results">
+      <div class="sim-result-inner">
+        <div class="sim-result-badge">🏁 TEST COMPLETE</div>
+        <div class="sim-result-overall-score" id="sim-result-score">—</div>
+        <div class="sim-result-rating" id="sim-result-rating">—</div>
 
-              <div class="sim-gauge-wrap" id="sim-wrap-airspeed" data-name="airspeed">
-                <div class="gauge-label">AIRSPEED</div>
-                <canvas id="sim-canvas-airspeed" width="120" height="120"></canvas>
-                <div class="gauge-value" id="sim-val-airspeed">200 kts</div>
-                <div class="anomaly-flash hidden" id="sim-flash-airspeed">⚠ ANOMALY</div>
-              </div>
+        <div class="sim-result-breakdown" id="sim-result-breakdown"></div>
 
-              <div class="sim-gauge-wrap" id="sim-wrap-vspeed" data-name="vspeed">
-                <div class="gauge-label">VERT SPEED</div>
-                <canvas id="sim-canvas-vspeed" width="120" height="120"></canvas>
-                <div class="gauge-value" id="sim-val-vspeed">0 fpm</div>
-                <div class="anomaly-flash hidden" id="sim-flash-vspeed">⚠ ANOMALY</div>
-              </div>
+        <div class="sim-result-skills" id="sim-result-skills"></div>
 
-            </div>
-          </div>
-
+        <div class="sim-result-actions">
+          <button class="btn-primary" id="sim-retry-btn">Try Again</button>
+          <button class="btn-secondary" id="sim-dashboard-btn">View Dashboard</button>
         </div>
       </div>
     </div>
-
-    <!-- RESULT -->
-    <div id="sim-result" class="hidden sim-result-container"></div>
 
   </section>
 
-  <!-- ═══════════════════ MULTITASK TAB ═══════════════════ -->
+  <!-- ─────────────── MULTITASK TAB ─────────────── -->
   <section class="tab-panel" id="tab-multitask">
     <div class="panel-header">
       <h2>Multitasking Test</h2>
-      <div class="module-timer-wrap"><span class="module-timer" id="mt-timer">02:00</span></div>
+      <div class="module-timer-wrap">
+        <span class="module-timer" id="mt-timer">02:00</span>
+      </div>
     </div>
     <div class="module-desc" id="mt-intro">
       <div class="intro-card">
         <h3>Triple-Task Challenge</h3>
-        <p>Perform <strong>three simultaneous tasks</strong> to simulate cockpit workload:</p>
+        <p>Perform <strong>three simultaneous tasks</strong> to simulate real cockpit workload:</p>
         <ul>
           <li>🎯 <strong>Tracking:</strong> Keep the crosshair on the moving dot</li>
           <li>➕ <strong>Math:</strong> Answer arithmetic questions quickly</li>
           <li>🔔 <strong>Alerts:</strong> Click the button when a signal flashes</li>
         </ul>
-        <p class="tip">All three tasks run at the same time. Score depends on tracking accuracy, math accuracy, and alert reaction speed.</p>
+        <p class="tip">All three tasks run at the same time. Your score depends on tracking accuracy, math accuracy, and alert reaction speed.</p>
         <button class="btn-primary btn-lg" id="mt-start-btn">Start Test (2 min)</button>
       </div>
     </div>
     <div class="mt-arena hidden" id="mt-arena">
       <div class="mt-top-bar">
-        <div class="mt-score-block"><span class="score-label">TRACKING</span><span class="score-val" id="mt-track-score">100%</span></div>
-        <div class="mt-score-block"><span class="score-label">MATH</span><span class="score-val" id="mt-math-score">0/0</span></div>
-        <div class="mt-score-block"><span class="score-label">ALERTS</span><span class="score-val" id="mt-alert-score">0/0</span></div>
+        <div class="mt-score-block">
+          <span class="score-label">TRACKING</span>
+          <span class="score-val" id="mt-track-score">100%</span>
+        </div>
+        <div class="mt-score-block">
+          <span class="score-label">MATH</span>
+          <span class="score-val" id="mt-math-score">0/0</span>
+        </div>
+        <div class="mt-score-block">
+          <span class="score-label">ALERTS</span>
+          <span class="score-val" id="mt-alert-score">0/0</span>
+        </div>
       </div>
       <div class="mt-tracking-wrap">
         <canvas id="mt-canvas" width="400" height="260"></canvas>
@@ -366,31 +400,33 @@
         <div class="math-options" id="mt-math-opts"></div>
       </div>
       <div class="mt-alert-wrap">
-        <div class="alert-signal" id="mt-alert-signal"><span id="mt-alert-text">STANDBY</span></div>
+        <div class="alert-signal" id="mt-alert-signal">
+          <span id="mt-alert-text">STANDBY</span>
+        </div>
         <button class="btn-alert" id="mt-alert-btn" disabled>RESPOND!</button>
       </div>
     </div>
     <div class="module-result hidden" id="mt-result"></div>
   </section>
 
-  <!-- ═══════════════════ REACTION TAB ═══════════════════ -->
-  
+  <!-- ─────────────── REACTION TAB ─────────────── -->
   <section class="tab-panel" id="tab-reaction">
     <div class="panel-header">
       <h2>Reaction Time Test</h2>
-      <div class="module-timer-wrap"><span class="module-timer" id="rt-timer">01:30</span></div>
+      <div class="module-timer-wrap">
+        <span class="module-timer" id="rt-timer">01:30</span>
+      </div>
     </div>
     <div class="module-desc" id="rt-intro">
       <div class="intro-card">
         <h3>Rapid Reaction Test</h3>
-        <p>Shapes and colors will appear. <strong>React as fast as possible:</strong></p>
+        <p>Shapes and colors will appear on screen. <strong>React as fast as possible</strong>:</p>
         <ul>
-          <li>🟢 <strong>GREEN</strong> → Tap/click anywhere</li>
-          <li>🔴 <strong>RED</strong> → Do NOT react (penalty!)</li>
-          <li>🟡 <strong>YELLOW</strong> → Press correct key shown</li>
-          <li>🔵 <strong>BLUE</strong> → Double-tap/click</li>
+          <li>🟢 <strong>GREEN signal</strong> → Tap/click <strong>anywhere</strong></li>
+          <li>🔴 <strong>RED signal</strong> → <strong>Do NOT react</strong> (penalty!)</li>
+          <li>🟡 <strong>YELLOW</strong> → Press <strong>correct key shown</strong></li>
         </ul>
-        <p class="tip">Reaction time measured in milliseconds. Best and average times tracked.</p>
+        <p class="tip">Reaction time is measured in milliseconds. Your best and average times are tracked.</p>
         <button class="btn-primary btn-lg" id="rt-start-btn">Start Test (90 sec)</button>
       </div>
     </div>
@@ -403,7 +439,8 @@
       </div>
       <div class="rt-stage" id="rt-stage">
         <div class="rt-waiting" id="rt-waiting">
-          <div class="rt-pulse"></div><p>Waiting for signal…</p>
+          <div class="rt-pulse"></div>
+          <p>Waiting for signal…</p>
         </div>
         <div class="rt-signal hidden" id="rt-signal">
           <div class="rt-shape" id="rt-shape"></div>
@@ -415,11 +452,13 @@
     <div class="module-result hidden" id="rt-result"></div>
   </section>
 
-  <!-- ═══════════════════ MONITORING TAB ═══════════════════ -->
+  <!-- ─────────────── MONITORING TAB ─────────────── -->
   <section class="tab-panel" id="tab-monitoring">
     <div class="panel-header">
       <h2>Instrument Monitoring</h2>
-      <div class="module-timer-wrap"><span class="module-timer" id="im-timer">02:00</span></div>
+      <div class="module-timer-wrap">
+        <span class="module-timer" id="im-timer">02:00</span>
+      </div>
     </div>
     <div class="module-desc" id="im-intro">
       <div class="intro-card">
@@ -428,7 +467,7 @@
         <ul>
           <li>🔵 <strong>Altitude:</strong> Normal 2000–8000 ft</li>
           <li>🟠 <strong>Airspeed:</strong> Normal 120–280 kts</li>
-          <li>🟢 <strong>Vertical Speed:</strong> Normal ±500 fpm</li>
+          <li>🟣 <strong>Heading:</strong> No warning (directional)</li>
           <li>🔴 <strong>Warning light</strong> → click to acknowledge</li>
         </ul>
         <p class="tip">Score = anomalies caught × reaction speed bonus</p>
@@ -480,22 +519,24 @@
     <div class="module-result hidden" id="im-result"></div>
   </section>
 
-  <!-- ═══════════════════ SPATIAL TAB ═══════════════════ -->
+  <!-- ─────────────── SPATIAL TAB ─────────────── -->
   <section class="tab-panel" id="tab-spatial">
     <div class="panel-header">
       <h2>Spatial Orientation Test</h2>
-      <div class="module-timer-wrap"><span class="module-timer" id="sp-timer">01:30</span></div>
+      <div class="module-timer-wrap">
+        <span class="module-timer" id="sp-timer">01:30</span>
+      </div>
     </div>
     <div class="module-desc" id="sp-intro">
       <div class="intro-card">
         <h3>Aircraft Orientation</h3>
-        <p>An aircraft silhouette will show a specific bank and pitch. <strong>Select the correct orientation.</strong></p>
+        <p>An aircraft silhouette will show a specific bank and pitch. <strong>Select the correct orientation description</strong>.</p>
         <ul>
           <li>🔄 <strong>Bank:</strong> Left/Right tilt of wings</li>
           <li>⬆ <strong>Pitch:</strong> Nose up/down attitude</li>
-          <li>✅ Select matching answer from 4 choices</li>
+          <li>✅ Select the matching answer from 4 choices</li>
         </ul>
-        <p class="tip">Faster correct answers score more. Incorrect answers break streak.</p>
+        <p class="tip">Faster correct answers score more. Incorrect answers deduct points.</p>
         <button class="btn-primary btn-lg" id="sp-start-btn">Start Test (90 sec)</button>
       </div>
     </div>
@@ -518,16 +559,18 @@
     <div class="module-result hidden" id="sp-result"></div>
   </section>
 
-  <!-- ═══════════════════ MEMORY TAB ═══════════════════ -->
+  <!-- ─────────────── MEMORY TAB ─────────────── -->
   <section class="tab-panel" id="tab-memory">
     <div class="panel-header">
       <h2>Memory Sequence Test</h2>
-      <div class="module-timer-wrap"><span class="module-timer" id="mem-timer">02:00</span></div>
+      <div class="module-timer-wrap">
+        <span class="module-timer" id="mem-timer">02:00</span>
+      </div>
     </div>
     <div class="module-desc" id="mem-intro">
       <div class="intro-card">
         <h3>Sequence Recall</h3>
-        <p>A sequence of numbers/symbols will flash on screen. <strong>Remember and reproduce it.</strong></p>
+        <p>A sequence of numbers/symbols will flash on screen. <strong>Remember the order and reproduce it</strong>.</p>
         <ul>
           <li>👁 Watch the sequence carefully</li>
           <li>✍ Enter the sequence from memory</li>
@@ -574,26 +617,19 @@
   </div>
 </div>
 
-<!-- ═══════════════════ SCRIPTS (order matters) ═══════════════════ -->
+<!-- ═══════════════════ SCRIPTS ═══════════════════ -->
 <script src="js/storage.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/scoring-engine.js"></script>
 <script src="js/stress-system.js"></script>
-<script src="js/core-multitask-engine.js"></script>
-<script src="js/simulator-controller.js"></script>
 <script src="js/multitask.js"></script>
 <script src="js/reaction.js"></script>
 <script src="js/monitoring.js"></script>
 <script src="js/spatial.js"></script>
 <script src="js/memory.js"></script>
+<script src="js/core-multitask-engine.js"></script>
+<script src="js/simulator-controller.js"></script>
 <script src="js/dashboard.js"></script>
 <script src="js/app.js"></script>
-  <script src="js/simulator-controller.js"></script>
-
-<script>
-  document.addEventListener("DOMContentLoaded", () => {
-    SimulatorController.init();
-  });
-</script>
 </body>
 </html>
