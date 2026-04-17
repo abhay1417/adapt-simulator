@@ -604,18 +604,12 @@ const SimulatorController = (() => {
     }
   }
 
- const SimulatorController = (() => {
-  
-  // all your code here
+   return {
+    init,
+    start: init
+  };
 
-  console.log('[SimulatorController] initialized');
-
- return {
-  init,
-  start: init
-};
-
-})();   // ← CLOSE PROPERLY
+})();   // ← THIS CLOSES EVERYTHING
 
 window.SimulatorController = SimulatorController;
 
