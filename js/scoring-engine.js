@@ -1,155 +1,224 @@
 /* ═══════════════════════════════════════════════════════════════
-   ADAPT — Advanced Scoring Engine v2
-   Weighted multidimensional scoring with consistency metrics
+   ADAPT — Advanced Scoring Engine
+   Weighted scoring, penalties, consistency, multitask efficiency
    ═══════════════════════════════════════════════════════════════ */
 
-const ScoringEngine = (() => {
+const ADAPTScoring = (() => {
+  'use strict';
 
-  /* ── Skill weights for composite score ── */
+  /* ── Skill Weights (must sum to 1.0) ── */
   const WEIGHTS = {
-    tracking:    0.25,
-    math:        0.20,
-    reaction:    0.20,
-    monitoring:  0.20,
-    memory:      0.15
+    tracking:   0.25,
+    math:       0.20,
+    alertRT:    0.20,
+    monitoring: 0.15,
+    consistency:0.20,
   };
 
-  /* ── Reaction time → score mapping (ms → 0–100) ── */
-  function rtToScore(ms) {
-    if (!ms || ms <= 0) return 0;
-    if (ms < 180) return 100;
-    if (ms < 250) return 95;
-    if (ms < 350) return 85;
-    if (ms < 450) return 73;
-    if (ms < 600) return 58;
-    if (ms < 800) return 42;
-    if (ms < 1100) return 25;
-    if (ms < 1500) return 12;
-    return 5;
+  /* ── Rating thresholds ── */
+  const RATINGS = [
+    { min: 90, label: 'EXCEPTIONAL',    color: '#00ff88', grade: 'A+' },
+    { min: 80, label: 'ABOVE AVERAGE',  color: '#00e5ff', grade: 'A'  },
+    { min: 70, label: 'PROFICIENT',     color: '#00aaff', grade: 'B+' },
+    { min: 60, label: 'AVERAGE',        color: '#ffd600', grade: 'B'  },
+    { min: 50, label: 'BELOW AVERAGE',  color: '#ff8800', grade: 'C'  },
+    { min:  0, label: 'NEEDS WORK',     color: '#ff3c3c', grade: 'D'  },
+  ];
+
+  /* ── Reaction time scoring (ms → 0-100) ── */
+  function scoreReactionTime(avgRT, missedPct) {
+    if (avgRT === null || avgRT === undefined) return 0;
+    // Perfect = 200ms, average = 450ms, poor = 800ms+
+    let rtScore = Math.max(0, 100 - (avgRT - 200) / 6);
+    rtScore = Math.max(0, Math.min(100, rtScore));
+    // Penalty for missed signals
+    const missPenalty = missedPct * 80; // 0-80 pt penalty
+    return Math.max(0, rtScore - missPenalty);
   }
 
-  /* ── Consistency score (standard deviation penalty) ── */
-  function consistencyScore(values) {
-    if (!values || values.length < 2) return 100;
-    const mean = values.reduce((a, b) => a + b, 0) / values.length;
-    const variance = values.reduce((s, v) => s + Math.pow(v - mean, 2), 0) / values.length;
-    const sd = Math.sqrt(variance);
-    // Lower SD = better consistency
-    const cv = mean > 0 ? (sd / mean) * 100 : 0; // Coefficient of variation %
-    if (cv < 10) return 100;
-    if (cv < 20) return 88;
-    if (cv < 30) return 74;
-    if (cv < 45) return 58;
-    if (cv < 60) return 42;
-    return 25;
+  /* ── Tracking score (accuracy % → weighted) ── */
+  function scoreTracking(avgAccuracy) {
+    if (avgAccuracy === null || avgAccuracy === undefined) return 0;
+    // Non-linear: staying very close scores exponentially better
+    const base = Math.max(0, Math.min(100, avgAccuracy));
+    // Boost for high accuracy
+    if (base >= 80) return Math.min(100, base * 1.1);
+    if (base >= 60) return base;
+    return base * 0.85; // Penalty for poor tracking
+  }
+
+  /* ── Math score ── */
+  function scoreMath(correct, total, avgTimeMs) {
+    if (!total) return 0;
+    const acc = correct / total;
+    // Speed bonus: under 3s = bonus, over 6s = penalty
+    const speedFactor = avgTimeMs
+      ? Math.max(0.7, Math.min(1.3, 4500 / Math.max(1000, avgTimeMs)))
+      : 1.0;
+    return Math.min(100, acc * 100 * speedFactor);
+  }
+
+  /* ── Consistency score (stddev of reaction times) ── */
+  function scoreConsistency(rtArray) {
+    if (!rtArray || rtArray.length < 3) return 50; // neutral
+    const mean = rtArray.reduce((a, b) => a + b, 0) / rtArray.length;
+    const variance = rtArray.reduce((acc, v) => acc + (v - mean) ** 2, 0) / rtArray.length;
+    const stddev = Math.sqrt(variance);
+    // Low stddev = consistent = good. Target <100ms stddev
+    const score = Math.max(0, 100 - stddev / 4);
+    return Math.min(100, score);
+  }
+
+  /* ── Monitoring score ── */
+  function scoreMonitoring(caught, total, avgCatchTimeMs) {
+    if (!total) return 0;
+    const acc = caught / total;
+    // Speed bonus for catching quickly (under 1.5s = max bonus)
+    const speedBonus = avgCatchTimeMs
+      ? Math.max(0, (3000 - avgCatchTimeMs) / 3000) * 20
+      : 0;
+    return Math.min(100, acc * 100 + speedBonus);
   }
 
   /* ── Penalty calculator ── */
-  function calcPenalty(opts) {
-    const { missedSignals = 0, falseTaps = 0, wrongAnswers = 0, timeouts = 0 } = opts;
-    const penalty =
-      missedSignals * 3 +
-      falseTaps * 4 +
-      wrongAnswers * 2 +
-      timeouts * 1.5;
-    return Math.min(50, penalty); // Cap penalty at 50 points
+  function calculatePenalties(opts) {
+    const {
+      falseTaps = 0,
+      missedAlerts = 0,
+      mathErrors = 0,
+      monitoringMissed = 0,
+    } = opts;
+    const penalties = [];
+    if (falseTaps > 0) penalties.push({ label: 'False Taps', pts: -falseTaps * 3 });
+    if (missedAlerts > 0) penalties.push({ label: 'Missed Alerts', pts: -missedAlerts * 5 });
+    if (mathErrors > 0) penalties.push({ label: 'Math Errors', pts: -mathErrors * 2 });
+    if (monitoringMissed > 0) penalties.push({ label: 'Missed Anomalies', pts: -monitoringMissed * 4 });
+    const total = penalties.reduce((s, p) => s + p.pts, 0);
+    return { penalties, total };
   }
 
-  /* ── Per-skill scoring ── */
-  function scoreTracking(avgAccuracy, stabilityPct) {
-    // avgAccuracy: 0–100, stabilityPct: 0–100
-    const base = avgAccuracy;
-    const bonus = stabilityPct > 85 ? 5 : stabilityPct > 70 ? 2 : 0;
-    return Math.min(100, Math.round(base * 0.85 + stabilityPct * 0.15 + bonus));
+  /* ── Composite score (0-100) ── */
+  function computeComposite(breakdown) {
+    const {
+      trackingScore   = 0,
+      mathScore       = 0,
+      alertScore      = 0,
+      monitoringScore = 0,
+      consistencyScore= 0,
+    } = breakdown;
+
+    return Math.round(
+      trackingScore    * WEIGHTS.tracking +
+      mathScore        * WEIGHTS.math +
+      alertScore       * WEIGHTS.alertRT +
+      monitoringScore  * WEIGHTS.monitoring +
+      consistencyScore * WEIGHTS.consistency
+    );
   }
 
-  function scoreMath(correct, total, avgTimeMs) {
-    if (!total) return 0;
-    const acc = (correct / total) * 100;
-    // Speed bonus: < 3s = full speed bonus, tapers off
-    const speedBonus = avgTimeMs
-      ? Math.max(0, Math.min(10, (6000 - avgTimeMs) / 500))
-      : 0;
-    return Math.min(100, Math.round(acc * 0.9 + speedBonus));
-  }
-
-  function scoreReaction(rts, missed, falseTaps) {
-    if (!rts || !rts.length) return Math.max(0, 50 - missed * 10 - falseTaps * 8);
-    const avgRT = rts.reduce((a, b) => a + b, 0) / rts.length;
-    const rtSc = rtToScore(avgRT);
-    const cons = consistencyScore(rts);
-    const penalty = calcPenalty({ missedSignals: missed, falseTaps });
-    return Math.max(0, Math.round(rtSc * 0.6 + cons * 0.4 - penalty));
-  }
-
-  function scoreMonitoring(caught, total, avgCatchMs, missed) {
-    if (!total) return 0;
-    const acc = (caught / total) * 100;
-    const speedBonus = avgCatchMs ? Math.max(0, Math.min(10, (3000 - avgCatchMs) / 300)) : 0;
-    const penalty = calcPenalty({ missedSignals: missed });
-    return Math.max(0, Math.min(100, Math.round(acc * 0.8 + speedBonus + 10 - penalty * 0.5)));
-  }
-
-  function scoreMemory(level, seqLength, correctRounds, totalRounds) {
-    const levelSc = Math.min(100, level * 12);
-    const accSc = totalRounds > 0 ? (correctRounds / totalRounds) * 100 : 50;
-    return Math.min(100, Math.round(levelSc * 0.6 + accSc * 0.4));
-  }
-
-  /* ── Full composite score ── */
-  function compositeScore(skills) {
-    /*
-      skills = {
-        tracking:   { score: 0–100 },
-        math:       { score: 0–100 },
-        reaction:   { score: 0–100 },
-        monitoring: { score: 0–100 },
-        memory:     { score: 0–100 }   (optional)
-      }
-    */
-    let total = 0;
-    let weightSum = 0;
-    for (const [key, w] of Object.entries(WEIGHTS)) {
-      if (skills[key] !== undefined) {
-        total += skills[key].score * w;
-        weightSum += w;
-      }
+  /* ── Get rating from score ── */
+  function getRating(score) {
+    for (const r of RATINGS) {
+      if (score >= r.min) return r;
     }
-    return weightSum > 0 ? Math.round(total / weightSum) : 0;
+    return RATINGS[RATINGS.length - 1];
   }
 
-  /* ── Rating label ── */
-  function rating(score) {
-    if (score >= 90) return { label: 'EXCEPTIONAL',   color: '#00ff88', stars: 5 };
-    if (score >= 80) return { label: 'ABOVE AVERAGE', color: '#00aaff', stars: 4 };
-    if (score >= 65) return { label: 'AVERAGE',       color: '#ffd600', stars: 3 };
-    if (score >= 50) return { label: 'BELOW AVERAGE', color: '#ff8800', stars: 2 };
-    return              { label: 'NEEDS WORK',     color: '#ff3c3c', stars: 1 };
+  /* ── Full session scoring ── */
+  function scoreSession(data) {
+    const {
+      tracking,   // { avgAccuracy }
+      math,       // { correct, total, avgTimeMs }
+      alerts,     // { correct, total, avgRT, rts, missed }
+      monitoring, // { caught, total, avgCatchTimeMs }
+      reactionRTs,// array of RTs
+      penalties: penaltyOpts = {}
+    } = data;
+
+    const trackingScore    = scoreTracking(tracking ? tracking.avgAccuracy : 0);
+    const mathScore        = scoreMath(
+      math ? math.correct : 0,
+      math ? math.total : 0,
+      math ? math.avgTimeMs : null
+    );
+    const missedAlertPct   = alerts && alerts.total > 0
+      ? (alerts.missed || 0) / alerts.total : 0;
+    const alertScore       = scoreReactionTime(
+      alerts ? alerts.avgRT : null, missedAlertPct
+    );
+    const monitoringScore  = scoreMonitoring(
+      monitoring ? monitoring.caught : 0,
+      monitoring ? monitoring.total : 0,
+      monitoring ? monitoring.avgCatchTimeMs : null
+    );
+    const consistencyScore = scoreConsistency(reactionRTs || []);
+
+    const breakdown = {
+      trackingScore:    Math.round(trackingScore),
+      mathScore:        Math.round(mathScore),
+      alertScore:       Math.round(alertScore),
+      monitoringScore:  Math.round(monitoringScore),
+      consistencyScore: Math.round(consistencyScore),
+    };
+
+    let composite = computeComposite(breakdown);
+
+    // Apply penalties
+    const penResult = calculatePenalties(penaltyOpts);
+    const penaltyTotal = Math.max(-30, penResult.total); // cap penalties at -30
+    composite = Math.max(0, Math.min(100, composite + penaltyTotal));
+
+    const rating = getRating(composite);
+
+    return {
+      composite,
+      breakdown,
+      rating,
+      penalties: penResult.penalties,
+      penaltyTotal,
+      weights: WEIGHTS,
+    };
   }
 
-  /* ── Multitasking efficiency (penalty when tasks are concurrent) ── */
-  function multitaskEfficiency(trackScore, mathScore, reactionScore) {
-    // Under high load, scores naturally drop. Efficiency measures how well maintained
-    const avg = (trackScore + mathScore + reactionScore) / 3;
-    const minS = Math.min(trackScore, mathScore, reactionScore);
-    // Penalty for very uneven performance (one task ignored)
-    const balance = minS / Math.max(avg, 1);
-    return Math.round(avg * 0.7 + balance * avg * 0.3);
+  /* ── Difficulty multiplier (AI-like adaptive) ── */
+  function getDifficultyMultiplier(recentScores) {
+    if (!recentScores || recentScores.length === 0) return 1.0;
+    const avg = recentScores.reduce((a, b) => a + b, 0) / recentScores.length;
+    // Good performance → harder; poor → easier (but never below 0.7)
+    if (avg >= 85) return Math.min(2.5, 1.0 + (avg - 85) / 30);
+    if (avg >= 70) return 1.0 + (avg - 70) / 100;
+    if (avg >= 50) return Math.max(0.8, 0.9 + (avg - 50) / 200);
+    return 0.7;
   }
 
-  console.log('[ScoringEngine] initialized');
+  /* ── Multitasking efficiency ── */
+  function multitaskEfficiency(taskScores) {
+    // Efficiency = how well someone maintains ALL tasks simultaneously
+    // vs their best individual task score
+    if (!taskScores || taskScores.length === 0) return 0;
+    const avg = taskScores.reduce((a, b) => a + b, 0) / taskScores.length;
+    const best = Math.max(...taskScores);
+    const worst = Math.min(...taskScores);
+    // High efficiency = all tasks close together at high level
+    const variance = taskScores.reduce((acc, v) => acc + (v - avg) ** 2, 0) / taskScores.length;
+    const stddev = Math.sqrt(variance);
+    const efficiencyPenalty = stddev / 2; // High variance = lower efficiency
+    return Math.max(0, Math.min(100, avg - efficiencyPenalty));
+  }
 
   return {
-    rtToScore,
-    consistencyScore,
-    calcPenalty,
+    scoreSession,
     scoreTracking,
     scoreMath,
-    scoreReaction,
+    scoreReactionTime,
     scoreMonitoring,
-    scoreMemory,
-    compositeScore,
+    scoreConsistency,
+    calculatePenalties,
+    computeComposite,
+    getRating,
+    getDifficultyMultiplier,
     multitaskEfficiency,
-    rating
+    WEIGHTS,
+    RATINGS,
   };
 })();
