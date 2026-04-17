@@ -33,6 +33,14 @@
 </header>
 
 <!-- ═══════════════════════════════ NAV TABS ═════════════════════════════ -->
+  <div id="status">
+  <span id="status-dot" style="display:inline-block;width:10px;height:10px;background:gray;border-radius:50%;"></span>
+  <span id="status-label">READY</span>
+</div>
+
+<div id="timer">10:00</div>
+
+<div id="simulator"></div>
 <nav id="main-nav">
   <div class="nav-inner">
     <button class="tab-btn active" data-tab="dashboard">
@@ -56,6 +64,7 @@
     <button class="tab-btn" data-tab="memory">
       <span class="tab-icon">🧠</span><span class="tab-label">Memory</span>
     </button>
+    <button id="sim-start-btn">Start Simulator</button>
   </div>
 </nav>
 
@@ -365,6 +374,7 @@
   </section>
 
   <!-- ═══════════════════ REACTION TAB ═══════════════════ -->
+  
   <section class="tab-panel" id="tab-reaction">
     <div class="panel-header">
       <h2>Reaction Time Test</h2>
@@ -578,5 +588,12 @@
 <script src="js/memory.js"></script>
 <script src="js/dashboard.js"></script>
 <script src="js/app.js"></script>
+  <script src="js/simulator-controller.js"></script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    SimulatorController.init();
+  });
+</script>
 </body>
 </html>
