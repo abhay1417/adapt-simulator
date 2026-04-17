@@ -1,111 +1,144 @@
 /* ═══════════════════════════════════════════════════════════════
    ADAPT — Stress & Distraction System
-   Audio distractions · Visual stress indicators · Pressure ramp
+   Audio alerts, random distractions, warning sounds, stress level
    ═══════════════════════════════════════════════════════════════ */
 
-const AdaptStressSystem = (() => {
+const ADAPTStress = (() => {
+  'use strict';
 
-  let _running = false;
-  let _level = 1;          // 1–5
-  let _timers = [];
-  let _stressEl = null;    // HUD stress indicator element
+  let _level = 0;          // 0–100
+  let _active = false;
+  let _distractInterval = null;
+  let _stressInterval   = null;
+  let _onLevelChange    = null;
 
-  /* ── Stress level colours ── */
-  const STRESS_COLORS = ['#00ff88','#8fff00','#ffd600','#ff8800','#ff3c3c'];
-  const STRESS_LABELS = ['LOW','MODERATE','HIGH','VERY HIGH','CRITICAL'];
+  /* ── Distraction messages shown on overlay ── */
+  const DISTRACTIONS = [
+    '⚠ TCAS ALERT — TRAFFIC',
+    '📻 ATC: TURN LEFT 270',
+    '🔴 ENGINE 2 FAULT',
+    '⚡ ELECTRICAL FAULT',
+    '📢 CABIN CREW CALL',
+    '🌩 TURBULENCE AHEAD',
+    '⛽ FUEL IMBALANCE',
+    '🔊 STALL WARNING',
+    '📡 NAV FAILURE',
+    '⚠ OVERSPEED',
+  ];
 
-  /* ── Schedule a repeating distraction ── */
-  function _schedule(fn, minMs, maxMs) {
-    if (!_running) return;
-    const delay = minMs + Math.random() * (maxMs - minMs);
-    const t = setTimeout(() => {
-      if (_running) {
-        try { fn(); } catch(e) {}
-        _schedule(fn, minMs, maxMs);
+  /* ── Play stress-level-appropriate audio ── */
+  function playStressAudio(level) {
+    if (!window.ADAPTAudio) return;
+    if (level >= 80) {
+      ADAPTAudio.playWarning();
+    } else if (level >= 50) {
+      ADAPTAudio.playAlert();
+    } else {
+      ADAPTAudio.playTick();
+    }
+  }
+
+  /* ── Show visual distraction ── */
+  function triggerDistraction() {
+    const el = document.getElementById('sim-distraction');
+    const textEl = document.getElementById('sim-distraction-text');
+    if (!el || !textEl) return;
+    const msg = DISTRACTIONS[Math.floor(Math.random() * DISTRACTIONS.length)];
+    textEl.textContent = msg;
+    el.classList.remove('hidden');
+    playStressAudio(_level);
+    setTimeout(() => el.classList.add('hidden'), 1800);
+  }
+
+  /* ── Start stress system ── */
+  function start(opts = {}) {
+    _active = true;
+    _level  = opts.initialLevel || 0;
+    _onLevelChange = opts.onLevelChange || null;
+
+    // Distraction interval (decreases as stress increases)
+    _distractInterval = setInterval(() => {
+      if (!_active) return;
+      const interval = Math.max(8000, 30000 - _level * 200);
+      // Random chance based on stress level
+      if (Math.random() < (_level / 100) * 0.7 + 0.1) {
+        triggerDistraction();
       }
-    }, delay);
-    _timers.push(t);
+    }, 5000);
   }
 
-  /* ── Random radio crackle ── */
-  function _radioCrackle() {
-    if (!_running || _level < 2) return;
-    const freqs = [320, 440, 680, 1100, 2200];
-    const f = freqs[Math.floor(Math.random() * freqs.length)];
-    ADAPTAudio.beep(f, 0.05 + Math.random() * 0.08, 'sawtooth', 0.06);
-    if (Math.random() < 0.4) {
-      setTimeout(() => ADAPTAudio.beep(f * 1.3, 0.04, 'sawtooth', 0.04), 80);
-    }
-  }
-
-  /* ── Warning klaxon ── */
-  function _klaxon() {
-    if (!_running || _level < 3) return;
-    ADAPTAudio.beep(880, 0.06, 'square', 0.1);
-    setTimeout(() => ADAPTAudio.beep(660, 0.06, 'square', 0.1), 80);
-    setTimeout(() => ADAPTAudio.beep(880, 0.06, 'square', 0.1), 160);
-  }
-
-  /* ── Screen flash for critical stress ── */
-  function _screenFlash() {
-    if (!_running || _level < 4) return;
-    const div = document.createElement('div');
-    div.style.cssText = `
-      position:fixed;inset:0;z-index:9999;pointer-events:none;
-      background:rgba(255,60,60,0.08);animation:adapt-flash 0.3s ease forwards;
-    `;
-    document.body.appendChild(div);
-    setTimeout(() => div.remove(), 400);
-  }
-
-  /* ── Update HUD stress bar ── */
-  function _updateHUD() {
-    if (!_stressEl) return;
-    const idx = Math.min(_level - 1, 4);
-    _stressEl.style.color = STRESS_COLORS[idx];
-    _stressEl.style.textShadow = `0 0 8px ${STRESS_COLORS[idx]}`;
-    _stressEl.textContent = STRESS_LABELS[idx];
-  }
-
-  /* ── Public API ── */
-  function start(level = 1, stressIndicatorEl = null) {
-    stop();
-    _running = true;
-    _level = Math.max(1, Math.min(5, level));
-    _stressEl = stressIndicatorEl;
-    _updateHUD();
-
-    // Radio crackle – always
-    _schedule(_radioCrackle, 4000, 12000);
-
-    // Klaxon – level 3+
-    if (_level >= 3) _schedule(_klaxon, 8000, 20000);
-
-    // Screen flash – level 4+
-    if (_level >= 4) _schedule(_screenFlash, 15000, 30000);
-  }
-
+  /* ── Update stress level (0–100) ── */
   function setLevel(level) {
-    _level = Math.max(1, Math.min(5, level));
-    _updateHUD();
-  }
-
-  function stop() {
-    _running = false;
-    _timers.forEach(t => clearTimeout(t));
-    _timers = [];
-    if (_stressEl) _stressEl.textContent = 'LOW';
-  }
-
-  /* ── Inject CSS for flash animation ── */
-  const style = document.createElement('style');
-  style.textContent = `
-    @keyframes adapt-flash {
-      0%{opacity:1} 50%{opacity:0.7} 100%{opacity:0}
+    _level = Math.max(0, Math.min(100, level));
+    if (_onLevelChange) _onLevelChange(_level);
+    // Update stress bar in HUD
+    const fill = document.getElementById('sim-stress-fill');
+    if (fill) {
+      fill.style.width = _level + '%';
+      if (_level >= 75) {
+        fill.style.background = 'var(--accent-red)';
+      } else if (_level >= 45) {
+        fill.style.background = 'var(--accent-yellow)';
+      } else {
+        fill.style.background = 'var(--accent-green)';
+      }
     }
-  `;
-  document.head.appendChild(style);
+  }
 
-  console.log('[AdaptStressSystem] Initialized');
-  return { start, stop, setLevel };
+  /* ── Ramp stress over time ── */
+  function ramp(durationMs, fromLevel, toLevel) {
+    const steps = 60;
+    const stepMs = durationMs / steps;
+    const delta  = (toLevel - fromLevel) / steps;
+    let   step   = 0;
+
+    _stressInterval = setInterval(() => {
+      if (!_active || step >= steps) {
+        clearInterval(_stressInterval);
+        return;
+      }
+      setLevel(fromLevel + delta * step);
+      step++;
+    }, stepMs);
+  }
+
+  /* ── Stop ── */
+  function stop() {
+    _active = false;
+    clearInterval(_distractInterval);
+    clearInterval(_stressInterval);
+    setLevel(0);
+    const el = document.getElementById('sim-distraction');
+    if (el) el.classList.add('hidden');
+  }
+
+  /* ── Get current level ── */
+  function getLevel() { return _level; }
+
+  /* ── Play specific sounds ── */
+  function playWarningBeep() {
+    if (window.ADAPTAudio) ADAPTAudio.playWarning();
+  }
+  function playErrorBeep() {
+    if (window.ADAPTAudio) ADAPTAudio.playError();
+  }
+  function playSuccessBeep() {
+    if (window.ADAPTAudio) ADAPTAudio.playSuccess();
+  }
+  function playAlertBeep() {
+    if (window.ADAPTAudio) ADAPTAudio.playAlert();
+  }
+
+  return {
+    start,
+    stop,
+    setLevel,
+    ramp,
+    getLevel,
+    triggerDistraction,
+    playWarningBeep,
+    playErrorBeep,
+    playSuccessBeep,
+    playAlertBeep,
+  };
 })();
