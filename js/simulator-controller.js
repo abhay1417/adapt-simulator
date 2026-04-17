@@ -301,8 +301,18 @@ const SimulatorController = (() => {
     }
   }
 
-  console.log('[SimulatorController] initialized');
-  return { init };
-})();
+ const SimulatorController = (() => {
+  
+  // all your code here
 
+  console.log('[SimulatorController] initialized');
+
+  return {
+    init,
+    start: init
+  };
+
+})();  // ← VERY IMPORTANT
+
+// ✅ THIS MUST BE OUTSIDE
 window.SimulatorController = SimulatorController;
