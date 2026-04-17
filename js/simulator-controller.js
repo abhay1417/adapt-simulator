@@ -610,13 +610,12 @@ const SimulatorController = (() => {
 
   console.log('[SimulatorController] initialized');
 
-  return {
-    init,
-    start: init
-  };
+ return {
+  init,
+  start: init
+};
 
-})();  // ← VERY IMPORTANT
+})();   // ← CLOSE PROPERLY
 
-// ✅ THIS MUST BE OUTSIDE
 window.SimulatorController = SimulatorController;
 
