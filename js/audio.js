@@ -11,7 +11,6 @@ const ADAPTAudio = (() => {
         ctx = new (window.AudioContext || window.webkitAudioContext)();
       } catch (e) { return null; }
     }
-    // Resume if suspended (mobile browsers require user gesture)
     if (ctx.state === 'suspended') ctx.resume();
     return ctx;
   }
@@ -20,7 +19,7 @@ const ADAPTAudio = (() => {
     const c = getCtx();
     if (!c) return;
     try {
-      const osc = c.createOscillator();
+      const osc  = c.createOscillator();
       const gain = c.createGain();
       osc.connect(gain);
       gain.connect(c.destination);
@@ -34,7 +33,6 @@ const ADAPTAudio = (() => {
   }
 
   function playAlert() {
-    // Double beep – high pitched alert
     beep(1200, 0.08, 'square', 0.3);
     setTimeout(() => beep(1200, 0.08, 'square', 0.3), 120);
   }
@@ -57,7 +55,6 @@ const ADAPTAudio = (() => {
   }
 
   function playWarning() {
-    // Low warning beep
     beep(340, 0.2, 'square', 0.35);
     setTimeout(() => beep(340, 0.2, 'square', 0.35), 300);
   }
@@ -70,15 +67,14 @@ const ADAPTAudio = (() => {
     beep(180, 0.15, 'sawtooth', 0.2);
   }
 
-  // Unlock audio on first user interaction
   function unlock() {
     const c = getCtx();
     if (c && c.state === 'suspended') c.resume();
   }
 
-  document.addEventListener('click', unlock, { once: true });
+  document.addEventListener('click',      unlock, { once: true });
   document.addEventListener('touchstart', unlock, { once: true });
-  document.addEventListener('keydown', unlock, { once: true });
+  document.addEventListener('keydown',    unlock, { once: true });
 
   return { beep, playAlert, playSuccess, playError, playTick, playCountdown, playWarning, playCorrect, playWrong };
 })();
