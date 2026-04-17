@@ -147,3 +147,20 @@
   console.log('%cAll modules loaded. Use keys 1-6 to switch tabs.', 'color:#8fa3c9;font-family:monospace;');
 
 })();
+
+function goToSection(section) {
+  document.querySelectorAll('.app-section').forEach(sec => {
+    sec.classList.remove('active-section');
+  });
+  document.getElementById(section).classList.add('active-section');
+}
+
+function startModule(module) {
+  console.log("Starting module:", module);
+  alert("Starting " + module + " module");
+}
+
+function startMockTest() {
+  console.log("Starting mock test");
+  alert("Mock Test Started");
+}
