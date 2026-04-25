@@ -29,17 +29,25 @@ const SimulatorController = (() => {
   const $ = id => document.getElementById(id);
 
   /* ─────────────── RESET ─────────────── */
-  function reset() {
-    state = {
-      running: false,
-      elapsed: 0,
-      timeLeft: TOTAL_SECONDS,
-      currentPhaseIdx: 0,
-      recentScores: [],       // rolling window for adaptive difficulty
-      liveScore: 0,
-      peakScore: 0,
-    };
+ function reset() {
+  // 🚫 Prevent reset while simulator is running
+  if (state.running) {
+    console.warn("Reset blocked during active session");
+    return;
   }
+
+  console.log("RESET CALLED ❗");
+
+  state = {
+    running: false,
+    elapsed: 0,
+    timeLeft: TOTAL_SECONDS,
+    currentPhaseIdx: 0,
+    recentScores: [],
+    liveScore: 0,
+    peakScore: 0,
+  };
+}
 
   /* ─────────────── START ─────────────── */
   function start() {
@@ -87,21 +95,43 @@ const SimulatorController = (() => {
     countdownInterval = setInterval(tick, 1000);
   }
 
-  /* ─────────────── TICK (every second) ─────────────── */
-  function tick() {
-    if (!state.running) { clearInterval(countdownInterval); return; }
-    state.elapsed++;
-    state.timeLeft = TOTAL_SECONDS - state.elapsed;
-
-    updateTimerDisplay();
-    updatePhase();
-    updateLiveScore();
-
-    if (state.timeLeft <= 0) {
-      clearInterval(countdownInterval);
-      endTest();
-    }
+ function tick() {
+  // Stop loop if not running
+  if (!state.running) {
+    clearInterval(countdownInterval);
+    return;
   }
+
+  // Update time
+  state.elapsed++;
+  state.timeLeft = TOTAL_SECONDS - state.elapsed;
+
+  // Update UI
+  updateTimerDisplay();
+  updatePhase();
+  updateLiveScore();
+
+  // 🔴 When time ends
+  if (state.timeLeft <= 0) {
+    clearInterval(countdownInterval);
+
+    console.log("TEST COMPLETED");
+
+    state.running = false;
+
+    // ✅ Show results instead of going back to main page
+    const arena = $('sim-arena');
+    const results = $('sim-results');
+
+    if (arena) arena.classList.add('hidden');
+    if (results) results.classList.remove('hidden');
+
+    // ❌ DO NOT call endTest() (it was redirecting you)
+    // endTest();
+
+    return;
+  }
+}
 
   /* ─────────────── PHASE MANAGEMENT ─────────────── */
   function updatePhase() {
@@ -206,73 +236,114 @@ const SimulatorController = (() => {
     if (t <= 60 && t % 2 === 0) ADAPTAudio.playCountdown();
   }
 
-  /* ─────────────── END TEST ─────────────── */
-  function endTest() {
-    if (!state.running) return;
-    state.running = false;
+function endTest() {
+  // 🛑 Prevent multiple calls
+  if (!state.running) {
+    console.warn("endTest ignored (already stopped)");
+    return;
+  }
 
-    CoreMultitaskEngine.stop();
-    ADAPTStress.stop();
+  console.log("END TEST TRIGGERED");
 
+  // Stop state
+  state.running = false;
+
+  // Stop systems safely
+  try { CoreMultitaskEngine.stop(); } catch (e) { console.warn(e); }
+  try { ADAPTStress.stop(); } catch (e) { console.warn(e); }
+
+  // Stop timer
+  if (countdownInterval) {
     clearInterval(countdownInterval);
+    countdownInterval = null;
+  }
 
-    const dot   = $('status-dot');
-    const label = $('status-label');
-    if (dot)   dot.className   = 'status-dot';
-    if (label) label.textContent = 'READY';
-    const hudWrap = $('hud-timer-wrap');
-    if (hudWrap) hudWrap.classList.add('hidden');
+  // UI status reset (header only)
+  const dot   = $('status-dot');
+  const label = $('status-label');
+  if (dot)   dot.className = 'status-dot';
+  if (label) label.textContent = 'READY';
 
-    const stats = CoreMultitaskEngine.getStats();
+  const hudWrap = $('hud-timer-wrap');
+  if (hudWrap) hudWrap.classList.add('hidden');
 
-    // Score via engine
-    const result = ADAPTScoring.scoreSession({
-      tracking:    { avgAccuracy: stats.trackAccuracy },
-      math:        { correct: stats.mathCorrect, total: stats.mathTotal, avgTimeMs: stats.mathAvgTime },
-      alerts:      { correct: stats.alertCorrect, total: stats.alertTotal, avgRT: stats.alertAvgRT, rts: stats.alertRTs, missed: stats.alertMissed },
-      monitoring:  { caught: stats.instCaught, total: stats.instTotal, avgCatchTimeMs: stats.instAvgCatch },
-      reactionRTs: stats.alertRTs,
-      penalties: {
-        missedAlerts:      stats.alertMissed,
-        monitoringMissed:  stats.instMissed,
-      }
-    });
+  // 🔴 IMPORTANT: Ensure we DO NOT go back to intro
+  const arena  = $('sim-arena');
+  const intro  = $('sim-intro');
+  const result = $('sim-results');
 
-    // Multitask efficiency
-    const taskScores = [
-      Math.min(100, stats.trackAccuracy),
-      stats.mathTotal > 0 ? stats.mathCorrect / stats.mathTotal * 100 : 0,
-      stats.alertTotal > 0 ? stats.alertCorrect / stats.alertTotal * 100 : 0,
-      stats.instTotal  > 0 ? stats.instCaught  / stats.instTotal  * 100 : 0,
-    ];
-    const efficiency = ADAPTScoring.multitaskEfficiency(taskScores);
+  if (arena)  arena.classList.add('hidden');
+  if (intro)  intro.classList.add('hidden');     // keep intro hidden
+  if (result) result.classList.remove('hidden'); // show results only
 
-    // Save to storage
+  // Gather stats
+  let stats = {};
+  try {
+    stats = CoreMultitaskEngine.getStats() || {};
+  } catch (e) {
+    console.warn("Stats fetch failed", e);
+  }
+
+  // Score via engine (guard missing values)
+  const scored = ADAPTScoring.scoreSession({
+    tracking:    { avgAccuracy: stats.trackAccuracy || 0 },
+    math:        { correct: stats.mathCorrect || 0, total: stats.mathTotal || 0, avgTimeMs: stats.mathAvgTime || 0 },
+    alerts:      { correct: stats.alertCorrect || 0, total: stats.alertTotal || 0, avgRT: stats.alertAvgRT || 0, rts: stats.alertRTs || [], missed: stats.alertMissed || 0 },
+    monitoring:  { caught: stats.instCaught || 0, total: stats.instTotal || 0, avgCatchTimeMs: stats.instAvgCatch || 0 },
+    reactionRTs: stats.alertRTs || [],
+    penalties: {
+      missedAlerts:      stats.alertMissed || 0,
+      monitoringMissed:  stats.instMissed || 0,
+    }
+  });
+
+  // Multitask efficiency
+  const taskScores = [
+    Math.min(100, stats.trackAccuracy || 0),
+    (stats.mathTotal  > 0) ? (stats.mathCorrect / stats.mathTotal) * 100 : 0,
+    (stats.alertTotal > 0) ? (stats.alertCorrect / stats.alertTotal) * 100 : 0,
+    (stats.instTotal  > 0) ? (stats.instCaught  / stats.instTotal)  * 100 : 0,
+  ];
+  const efficiency = ADAPTScoring.multitaskEfficiency(taskScores);
+
+  // Save to storage (guarded)
+  try {
     ADAPTStorage.addScore('simulator', {
-      composite:     result.composite,
-      breakdown:     result.breakdown,
-      efficiency:    Math.round(efficiency),
-      peakScore:     state.peakScore,
-      rawStats:      stats,
-      duration:      state.elapsed,
+      composite:  scored.composite,
+      breakdown:  scored.breakdown,
+      efficiency: Math.round(efficiency),
+      peakScore:  state.peakScore || 0,
+      rawStats:   stats,
+      duration:   state.elapsed || 0,
     });
 
-    // Save individual module scores too (for dashboard)
     if (stats.mathTotal > 0) {
       ADAPTStorage.addScore('multitask', {
-        composite:  result.breakdown.trackingScore,
-        trackAcc:   Math.round(stats.trackAccuracy),
-        mathAcc:    stats.mathTotal>0 ? Math.round(stats.mathCorrect/stats.mathTotal*100) : 0,
-        alertAcc:   stats.alertTotal>0 ? Math.round(stats.alertCorrect/stats.alertTotal*100) : 0,
-        avgAlertRT: stats.alertAvgRT,
+        composite:  scored.breakdown?.trackingScore || 0,
+        trackAcc:   Math.round(stats.trackAccuracy || 0),
+        mathAcc:    Math.round((stats.mathTotal ? (stats.mathCorrect / stats.mathTotal) * 100 : 0)),
+        alertAcc:   Math.round((stats.alertTotal ? (stats.alertCorrect / stats.alertTotal) * 100 : 0)),
+        avgAlertRT: stats.alertAvgRT || 0,
       });
     }
-
-    // Refresh dashboard
-    if (window.DashboardModule) window.DashboardModule.refresh();
-
-    showResults(result, stats, efficiency);
+  } catch (e) {
+    console.warn("Storage save failed", e);
   }
+
+  // Refresh dashboard safely
+  try {
+    if (window.DashboardModule) window.DashboardModule.refresh();
+  } catch (e) {
+    console.warn(e);
+  }
+
+  // Render results
+  try {
+    showResults(scored, stats, efficiency);
+  } catch (e) {
+    console.warn("showResults failed", e);
+  }
+}
 
   /* ─────────────── SHOW RESULTS ─────────────── */
   function showResults(result, stats, efficiency) {
